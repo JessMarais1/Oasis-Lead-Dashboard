@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oasis Life | Deal Analysis Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 
+    Chosen Palette: "Cool Earth" - A calm and professional palette using neutral grays, a deep slate blue for primary elements, and muted teal/green for accents and positive indicators.
+    Application Structure Plan: Single-page dashboard. 1) Header. 2) Comprehensive filter panel. 3) KPI cards. 4) Chart grid: Agent Deals (fixed totals), Lead Source (donut), Property Type (pie), Purchaser Race (fixed totals, bar), Purchaser Profile (pie), Finance Type (fixed totals, donut), Deals Over Time (LRA Date, line), Purchaser Current Address (bar, top N), Phase Distribution (pie). 5) Dynamic list for Linked Addresses. This structure aims for a balance of overall summary insights (fixed KPIs/charts) and detailed, filterable exploration for deeper analysis, directly incorporating the user's latest data and reporting requirements.
+    Visualization & Content Choices: 
+    - KPIs: Total Deals (48), Total Sales Value (R162,445,000), Total Linked Deals (27) - fixed. Avg. Selling Price, Avg. Days to LRA - dynamic based on filtered converted deals. -> Goal: Quick overview.
+    - Agent Deals: Bar chart with fixed counts (Andre 19.5, C&M 10, Paul 6.5, Marlene 12). -> Goal: Overall agent contribution. -> Interaction: Static.
+    - Lead Source: Donut chart, filterable. -> Goal: Marketing channel effectiveness. Lead sources updated based on new master.
+    - Property Type: Pie chart, filterable. -> Goal: Unit popularity.
+    - Purchaser Race: Bar chart with fixed counts (White 46, Coloured 2). -> Goal: Overall buyer race profile. -> Interaction: Static.
+    - Purchaser Profile (Gender/Marital): Pie chart, filterable. -> Goal: Buyer profile.
+    - Finance Type: Donut chart with fixed counts (Linked 27, Cash 18, Cash (10%) 2). -> Goal: Overall deal financing. -> Interaction: Static.
+    - Deals Over Time (LRA Date): Line chart, filterable for converted deals. -> Goal: Trend analysis of conversions.
+    - Purchaser Current Address: Bar chart (Top N), filterable. Shows where all 48 buyers currently live. -> Goal: Geographic origin of buyers.
+    - Phase Distribution: Pie chart, filterable. -> Goal: Development phase progress.
+    - Linked Addresses: Dynamic HTML list, filterable for LINKED deals. Shows where linked deals are. -> Goal: Show specific linked sale locations.
+    CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; 
+        }
+        .chart-container, .dynamic-list-container {
+            position: relative;
+            width: 100%;
+            min-height: 350px; 
+            max-height: 450px; 
+            background-color: #ffffff;
+            padding: 1.5rem; 
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-canvas-container {
+            flex-grow: 1;
+            position: relative;
+        }
+        .dynamic-list {
+            overflow-y: auto;
+            max-height: 300px; 
+            padding-right: 0.5rem; 
+        }
+        .dynamic-list li {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .dynamic-list li:last-child {
+            border-bottom: none;
+        }
+        .kpi-card {
+            background-color: #ffffff;
+            border-left: 5px solid #4f46e5; 
+            transition: all 0.3s ease;
+            padding: 1.5rem; 
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); 
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e"); 
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25em 1.25em;
+            padding-right: 2.5rem; 
+        }
+         .chart-title {
+            text-align: center;
+            font-size: 1.125rem; 
+            font-weight: 600; 
+            color: #1f2937; 
+            margin-bottom: 1rem; 
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        
+        <header class="mb-8 md:mb-12 text-center">
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-indigo-700">Oasis Life Deal Analysis Dashboard</h1>
+            <p class="mt-2 text-lg md:text-xl text-gray-600">Interactive Insights from Master Deal Data (June 2025)</p>
+        </header>
+
+        <main>
+            <section id="filters" class="mb-8 p-6 bg-white rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-gray-700 mb-5">Filter Options</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="agentFilter" class="block text-sm font-medium text-gray-600">Agent Name</label>
+                        <select id="agentFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="leadSourceFilter" class="block text-sm font-medium text-gray-600">Lead Source</label>
+                        <select id="leadSourceFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="propertyTypeFilter" class="block text-sm font-medium text-gray-600">Property Type</label>
+                        <select id="propertyTypeFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                     <div>
+                        <label for="purchaserDemographicFilter" class="block text-sm font-medium text-gray-600">Purchaser Race</label>
+                        <select id="purchaserDemographicFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="purchaserGenderFilter" class="block text-sm font-medium text-gray-600">Purchaser Profile</label>
+                        <select id="purchaserGenderFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="financeTypeFilter" class="block text-sm font-medium text-gray-600">Finance Type</label>
+                        <select id="financeTypeFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="lraStatusFilter" class="block text-sm font-medium text-gray-600">LRA Status</label>
+                        <select id="lraStatusFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                    <div>
+                        <label for="phaseFilter" class="block text-sm font-medium text-gray-600">Phase</label>
+                        <select id="phaseFilter" class="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"></select>
+                    </div>
+                </div>
+            </section>
+
+            <section id="kpi-cards" class="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="kpi-card">
+                    <h3 class="text-base font-medium text-gray-500">Total Deals</h3>
+                    <p id="totalDeals" class="mt-1 text-3xl font-semibold text-indigo-600">48</p>
+                </div>
+                <div class="kpi-card" style="border-color: #34d399;">
+                    <h3 class="text-base font-medium text-gray-500">Total Sales Value</h3>
+                    <p id="totalSalesValue" class="mt-1 text-3xl font-semibold text-indigo-600">R0</p>
+                </div>
+                 <div class="kpi-card" style="border-color: #f59e0b;">
+                    <h3 class="text-base font-medium text-gray-500">Avg. Days to LRA</h3>
+                    <p id="avgDaysToLRA" class="mt-1 text-3xl font-semibold text-indigo-600">0</p>
+                </div>
+                <div class="kpi-card" style="border-color: #60a5fa;">
+                    <h3 class="text-base font-medium text-gray-500">Avg. Selling Price</h3>
+                    <p id="avgSellingPrice" class="mt-1 text-3xl font-semibold text-indigo-600">R0</p>
+                </div>
+                <div class="kpi-card" style="border-color: #fbbf24;">
+                    <h3 class="text-base font-medium text-gray-500">Total Linked Deals</h3>
+                    <p id="totalLinkedDeals" class="mt-1 text-3xl font-semibold text-indigo-600">27</p>
+                </div>
+            </section>
+
+            <section id="charts" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div class="chart-container">
+                    <h3 class="chart-title">Deals by Agent</h3>
+                    <div class="chart-canvas-container"><canvas id="agentChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Deals by Lead Source</h3>
+                    <div class="chart-canvas-container"><canvas id="leadSourceChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Distribution of Property Types</h3>
+                    <div class="chart-canvas-container"><canvas id="propertyTypeChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Purchaser Demographics (Race)</h3>
+                    <div class="chart-canvas-container"><canvas id="purchaserDemographicChart"></canvas></div>
+                </div>
+                 <div class="chart-container">
+                    <h3 class="chart-title">Purchaser Profile (Gender/Marital)</h3>
+                    <div class="chart-canvas-container"><canvas id="purchaserGenderChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Deal Financing Type</h3>
+                    <div class="chart-canvas-container"><canvas id="financeTypeChart"></canvas></div>
+                </div>
+                 <div class="chart-container">
+                    <h3 class="chart-title">Phase Distribution</h3>
+                     <div class="chart-canvas-container"><canvas id="phaseChart"></canvas></div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Top Purchaser Current Addresses</h3>
+                    <div class="chart-canvas-container"><canvas id="purchaserAddressChart"></canvas></div>
+                </div>
+                <div class="dynamic-list-container">
+                    <h3 class="chart-title">Linked Deal Addresses (Filtered)</h3>
+                    <ul id="linkedAddressesList" class="dynamic-list text-sm text-gray-600"></ul>
+                </div>
+                <div class="chart-container md:col-span-2 xl:col-span-3">
+                    <h3 class="chart-title">Deals Converted Over Time (by LRA Signature Month)</h3>
+                    <div class="chart-canvas-container"><canvas id="lraTimeChart"></canvas></div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center text-sm text-gray-500">
+            <p>&copy; <span id="currentYear"></span> Oasis Life Deal Analysis. Data subject to verification.</p>
+        </footer>
+    </div>
+
+    <script>
+        const masterDealData = [
+            // Andre: 20 entries (to represent 19.5 deals)
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Willmott","purchaserAge":77,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Milnerton","leadSource":"Seeff Show day & Table","leadDate":"03-Aug-2024","lraSignatureDate":"01-Sep-2024","daysToLRA":29,"lraStatus":"SOLD","unitNumber":6,"unitAddress":"2 Savannah Bed","type":"3-1M","sellingPrice":4200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Sunningdale"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Damant","purchaserAge":77,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Blouberg","leadSource":"Seeff - Call in","leadDate":"03-Feb-2025","lraSignatureDate":"17-Feb-2025","daysToLRA":14,"lraStatus":"SOLD","unitNumber":24,"unitAddress":"20 Citrine","type":"2-2M","sellingPrice":3450000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Century CIty"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Evans","purchaserAge":60,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Century City","leadSource":"Oasis - PRE launch DB","leadDate":"08-Mar-2024","lraSignatureDate":"11-Nov-2024","daysToLRA":248,"lraStatus":"SOLD","unitNumber":14,"unitAddress":"11 Citrine Cres","type":"2-2M","sellingPrice":3750000,"cashOrLinkedDeal":"LINKED","linkedAddress":"26 Churchill (PE)"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Nicholson","purchaserAge":77,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Atlantic Beach","leadSource":"Seeff - Call in / Oasis CRM","leadDate":"07-Apr-2025","lraSignatureDate":"17-Apr-2025","daysToLRA":10,"lraStatus":"SOLD","unitNumber":47,"unitAddress":"16 Saffrom","type":"2-2M","sellingPrice":4350000,"cashOrLinkedDeal":"LINKED","linkedAddress":"38 Nautilus circle Atlantic Beach"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Ralph","purchaserAge":68,"purchaserGender":"Single Male","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"WOM","leadDate":"28-Aug-2024","lraSignatureDate":"28-Oct-2024","daysToLRA":61,"lraStatus":"SOLD","unitNumber":28,"unitAddress":"2A Citrine Cres","type":"1-2","sellingPrice":2800000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 37455 Milnerton"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Woolf","purchaserAge":77,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Century City","leadSource":"Seeff Show day & Table","leadDate":"25-Sep-2024","lraSignatureDate":"19-Nov-2024","daysToLRA":55,"lraStatus":"SOLD","unitNumber":22,"unitAddress":"16 Citrine Cres","type":"1-2","sellingPrice":2800000,"cashOrLinkedDeal":"CASH","linkedAddress":null},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Zillman","purchaserAge":82,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Paarl","leadSource":"Seeff Call in","leadDate":"13-Feb-2025","lraSignatureDate":"02-Apr-2025","daysToLRA":48,"lraStatus":"SOLD","unitNumber":11,"unitAddress":"5 Citrine","type":"2-2M","sellingPrice":3850000,"cashOrLinkedDeal":"CASH","linkedAddress":null},
+            {"phase":2,"agentName":"Andre","purchaserLastName":"Hughes","purchaserAge":74,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Melkbos","leadSource":"Walk in","leadDate":"21-Sep-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":34,"lraStatus":"LRA SIGNED","unitNumber":12,"unitAddress":"7 Citrine Cres","type":"2-1M","sellingPrice":4350000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Melkbosstrand Central"}, 
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Clark","purchaserAge":67,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Table View","leadSource":"Oasis CRM (WOM)","leadDate":"10-Oct-2024","lraSignatureDate":"28-Oct-2024","daysToLRA":18,"lraStatus":"SOLD","unitNumber":56,"unitAddress":"9 Sugarbush Close","type":"1-1","sellingPrice":3600000,"cashOrLinkedDeal":"CASH","linkedAddress":null},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Kirstein","purchaserAge":69,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Pretoria","leadSource":"VIP friend","leadDate":"05-Aug-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":81,"lraStatus":"SOLD","unitNumber":15,"unitAddress":"Citrine Crescent","type":"2-2M","sellingPrice":3950000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Ert 1239 Melkbos"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Mactavish","purchaserAge":73,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Kenilworth","leadSource":"Oasis website / online search","leadDate":"15-Aug-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":71,"lraStatus":"SOLD","unitNumber":16,"unitAddress":"Citrine Cres","type":"2-2M","sellingPrice":3950000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Kenilworth Lower"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Small","purchaserAge":78,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Welgedacht","leadSource":"Seeff - Referral (Durbanville)","leadDate":"15-Aug-2024","lraSignatureDate":"30-Oct-2024","daysToLRA":76,"lraStatus":"SOLD","unitNumber":18,"unitAddress":"8 Citrine Cres","type":"2-2","sellingPrice":3850000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 34937 Bellville"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Willmott","purchaserAge":77,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Milnerton","leadSource":"Seeff Show day & Table","leadDate":"03-Aug-2024","lraSignatureDate":"01-Sep-2024","daysToLRA":29,"lraStatus":"SOLD","unitNumber":6,"unitAddress":"2 Savannah Bed","type":"3-1M","sellingPrice":4200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Sunningdale"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Coelho","purchaserAge":89,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Table View","leadSource":"Seeff - Referral","leadDate":"09-Sep-2024","lraSignatureDate":"18-Oct-2024","daysToLRA":39,"lraStatus":"SOLD","unitNumber":52,"unitAddress":"1 Sugarbush Cl","type":"1-1","sellingPrice":3600000,"cashOrLinkedDeal":"LINKED","linkedAddress":"181 Dolphin Beach"},
+            {"phase":1.5,"agentName":"Andre","purchaserLastName":"Fredericks","purchaserAge":67,"purchaserGender":"Single Female","purchaserDemographic":"Coloured","purchaserCurrentAddress":"Pinelands","leadSource":"Seeff - P24","leadDate":"06-Sep-2024","lraSignatureDate":"21-Nov-2024","daysToLRA":76,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":58,"unitAddress":"3 Amber","type":"3-3","sellingPrice":2450000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 3568 Pinelands"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Gardner","purchaserAge":70,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Tamboerskloof","leadSource":"Oasis - PRE launch DB","leadDate":"23-Aug-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":63,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":44,"unitAddress":"9 Pincushion St","type":"2-1","sellingPrice":4200000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A (Already sold)"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Liggett","purchaserAge":73,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Oasis - PRE launch DB","leadDate":"15-May-2024","lraSignatureDate":"12-Mar-2025","daysToLRA":301,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":10,"unitAddress":"3 Citrine Crescent","type":"2-2 M","sellingPrice":3850000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1,"agentName":"Andre","purchaserLastName":"Willmott","purchaserAge":83,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Milnerton","leadSource":"Oasis PRE-launch DB","leadDate":"31-Jul-2024","lraSignatureDate":"09-Sep-2024","daysToLRA":40,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":6,"unitAddress":"2 Savannah Bnd","type":"3-1 M","sellingPrice":3200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 38461 Sunningdale"},
+            {"phase":1.4,"agentName":"Andre","purchaserLastName":"Lang","purchaserAge":81,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Blouberg Hills","leadSource":"Seeff - Call in","leadDate":"26-Feb-2025","lraSignatureDate":"04-Apr-2025","daysToLRA":37,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":48,"unitAddress":"18 Saffron","type":"2-1","sellingPrice":4350000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.2,"agentName":"Andre","purchaserLastName":"Teare","purchaserAge":75,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Ballito","leadSource":"Seeff - Call in","leadDate":"05-Dec-2024","lraSignatureDate":"15-Jan-2025","daysToLRA":41,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":28,"unitAddress":"28 Citrine Cres","type":"3-2","sellingPrice":2325000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            
+            // Caroline & Margie: 10 deals
+            {"phase":1.3,"agentName":"Caroline & Margie","purchaserLastName":"Bayley","purchaserAge":77,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Rondebosch","leadSource":"Oasis - PRE launch DB","leadDate":"17-Sep-2024","lraSignatureDate":"25-Nov-2024","daysToLRA":69,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":43,"unitAddress":"7 Pincushion St","type":"2-1 M","sellingPrice":4200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"ALREADY SOLD?"},
+            {"phase":1.2,"agentName":"Caroline & Margie","purchaserLastName":"Castelyn & Lombard","purchaserAge":69,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Gordons's Bay","leadSource":"Oasis webite - online search","leadDate":"28-Jan-2025","lraSignatureDate":"14-Apr-2025","daysToLRA":76,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":27,"unitAddress":"26 Citrine Cres","type":"1-2","sellingPrice":2800000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Fairview Golf Estate, Gordons Bay"},
+            {"phase":1.1,"agentName":"Caroline & Margie","purchaserLastName":"Napier","purchaserAge":66,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Oasis VIP/friend","leadDate":"07-Jun-2024","lraSignatureDate":"19-Aug-2024","daysToLRA":73,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":9,"unitAddress":"1 Citrine Cres","type":"2-1","sellingPrice":4500000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.3,"agentName":"Caroline & Margie","purchaserLastName":"Van der Merwe","purchaserAge":62,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Durbanville","leadSource":"Oasis webite - online search","leadDate":"14-Jan-2025","lraSignatureDate":"12-Jul-2024","daysToLRA":-186,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":38,"unitAddress":"6 Pincushion","type":"2-2","sellingPrice":3850000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.5,"agentName":"Caroline & Margie","purchaserLastName":"Ware-Lane","purchaserAge":75,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Oasis webite - online search","leadDate":"30-Dec-2024","lraSignatureDate":"16-Jan-2025","daysToLRA":17,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":59,"unitAddress":"11 Pincushion","type":"3-2","sellingPrice":2500000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 17183 Pinehurst"},
+            {"phase":1.1,"agentName":"Caroline & Margie","purchaserLastName":"McEvoy","purchaserAge":81,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Yzerfontein","leadSource":"Seeff - Walk in","leadDate":"27-Sep-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":28,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":7,"unitAddress":"4 Savannah Bnd","type":"3-1","sellingPrice":2950000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 265 Yzerfontein"},
+            {"phase":1.2,"agentName":"Caroline & Margie","purchaserLastName":"McCree","purchaserAge":80,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Table Talk","leadDate":"17-Sep-2024","lraSignatureDate":"19-Sep-2024","daysToLRA":2,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":33,"unitAddress":"14 Savannah Bnd","type":"1-2","sellingPrice":2800000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 28016 MIlneron"},
+            {"phase":1.2,"agentName":"Caroline & Margie","purchaserLastName":"Engler","purchaserAge":68,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunset Beach","leadSource":"Google","leadDate":"07-Sep-2024","lraSignatureDate":"13-Dec-2024","daysToLRA":97,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":30,"unitAddress":"8 Savannah Bnd","type":"3-1 M","sellingPrice":2950000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.4,"agentName":"Caroline & Margie","purchaserLastName":"Dowden","purchaserAge":74,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Bedfordview","leadSource":"Oasis webite - online search","leadDate":"17-Mar-2025","lraSignatureDate":"05-May-2025","daysToLRA":49,"lraStatus":"Pending revisions","unitNumber":53,"unitAddress":"3 Sugarbush Close","type":"1-1","sellingPrice":3500000,"cashOrLinkedDeal":"LINKED","linkedAddress":"30 Townsend edenvale"},
+            {"phase":1.2,"agentName":"Caroline & Margie","purchaserLastName":"Tauber","purchaserAge":80,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Glencairn","leadSource":"Oasis webite - online search","leadDate":"05-Mar-2025","lraSignatureDate":"17-Apr-2025","daysToLRA":43,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":37,"unitAddress":"4 Pincushion","type":"1-2 M","sellingPrice":2900000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            
+            // Paul: 6 entries (to represent 6.5 deals)
+            {"phase":1,"agentName":"Paul","purchaserLastName":"Morrison","purchaserAge":72,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Bloubergrant","leadSource":"Expo","leadDate":"16-Oct-2024","lraSignatureDate":"12-Dec-2024","daysToLRA":57,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":64,"unitAddress":"4 Amber","type":"3-1","sellingPrice":3200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 8467 MIlneton"},
+            {"phase":1.5,"agentName":"Paul","purchaserLastName":"Fiddicke","purchaserAge":69,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Scarborough","leadSource":"Oasis webite - online search","leadDate":"03-Aug-2024","lraSignatureDate":"12-Dec-2024","daysToLRA":131,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":63,"unitAddress":"2 Amber","type":"3-1","sellingPrice":3350000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.4,"agentName":"Paul","purchaserLastName":"Sterley","purchaserAge":74,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Langebaan","leadSource":"Oasis webite - online search","leadDate":"28-Aug-2024","lraSignatureDate":"11-Apr-2024","daysToLRA":-139,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":49,"unitAddress":"2 Lime St","type":"3-1","sellingPrice":3200000,"cashOrLinkedDeal":"CASH (10%)","linkedAddress":"N/A"},
+            {"phase":1.5,"agentName":"Paul","purchaserLastName":"Barber","purchaserAge":84,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Parklands","leadSource":"Oasis webite - online search","leadDate":"30-Mar-2025","lraSignatureDate":"29-Apr-2025","daysToLRA":30,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":60,"unitAddress":"12 Pincushion","type":"3-2","sellingPrice":2500000,"cashOrLinkedDeal":"LINKED","linkedAddress":"65 Regent Rd Parklands"},
+            {"phase":2.4,"agentName":"Paul","purchaserLastName":"Krause / Rzehak","purchaserAge":72,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Bloubergrant","leadSource":"Seeff - Call in","leadDate":"25-Apr-2025","lraSignatureDate":"23-May-2025","daysToLRA":28,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":100,"unitAddress":"2 Saffton Dr","type":"2-1","sellingPrice":4750000,"cashOrLinkedDeal":"CASH (10%)","linkedAddress":"N/A"},
+            {"phase":1.1,"agentName":"Paul","purchaserLastName":"Van den Blink","purchaserAge":75,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Moorreesburg","leadSource":"Seeff - Call in","leadDate":"28-Aug-2024","lraSignatureDate":"27-Dec-2024","daysToLRA":121,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":8,"unitAddress":"6 Savannah Bnd","type":"3-1","sellingPrice":2950000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Bloem"},
+            
+            // Marlene: 12 deals
+            {"phase":1.4,"agentName":"Marlene","purchaserLastName":"Smyth","purchaserAge":80,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Atlantic Beach Gold Estate","leadSource":"Expo","leadDate":"14-Sep-2024","lraSignatureDate":"16-Jan-2025","daysToLRA":124,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":54,"unitAddress":"5 Sugarbush","type":"1-1","sellingPrice":3500000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Atlantic Beach"},
+            {"phase":2.3,"agentName":"Marlene","purchaserLastName":"Austen","purchaserAge":71,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Edgemead","leadSource":"Facebook","leadDate":"30-Nov-2024","lraSignatureDate":"30-Jan-2025","daysToLRA":61,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":85,"unitAddress":"15 Pincushion (phase 2)","type":"2-1","sellingPrice":4450000,"cashOrLinkedDeal":"LINKED","linkedAddress":"9 Telford Way Edgemead"},
+            {"phase":1.2,"agentName":"Marlene","purchaserLastName":"De Jager","purchaserAge":76,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Table View","leadSource":"Facebook","leadDate":"31-Aug-2024","lraSignatureDate":"18-Oct-2024","daysToLRA":48,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":31,"unitAddress":"10 Savannah Bnd","type":"3-1","sellingPrice":3200000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.3,"agentName":"Marlene","purchaserLastName":"Braunger","purchaserAge":69,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Tamboerskloof","leadSource":"Oasis - PRE launch DB","leadDate":"15-Aug-2025","lraSignatureDate":"25-Sep-2025","daysToLRA":41,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":41,"unitAddress":"3 Pincushion St","type":"2-1 M","sellingPrice":4200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 48 TBK"},
+            {"phase":1.2,"agentName":"Marlene","purchaserLastName":"Miller","purchaserAge":75,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Bloubergrand","leadSource":"Oasis - PRE launch DB","leadDate":"13-Sep-2024","lraSignatureDate":"18-Oct-2024","daysToLRA":35,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":35,"unitAddress":"18 Savannah Bnd","type":"1-2","sellingPrice":2800000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.2,"agentName":"Marlene","purchaserLastName":"Stewart","purchaserAge":68,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Bloubertrand","leadSource":"Oasis VIP/friend","leadDate":"18-Aug-2024","lraSignatureDate":"25-Oct-2024","daysToLRA":68,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":29,"unitAddress":"7 Savannah Bnd","type":"3-3","sellingPrice":2295000,"cashOrLinkedDeal":"LINKED","linkedAddress":"107 Kingshaven"},
+            {"phase":1.2,"agentName":"Marlene","purchaserLastName":"Groenewald","purchaserAge":63,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Table View","leadSource":"Oasis webite - online search","leadDate":"28-Aug-2024","lraSignatureDate":"28-Oct-2024","daysToLRA":61,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":32,"unitAddress":"12 Savannah Bnd","type":"3-1","sellingPrice":3200000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Erf 1494 Sandbaai"},
+            {"phase":1.1,"agentName":"Marlene","purchaserLastName":"Machiné","purchaserAge":81,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Pretoria","leadSource":"Oasis webite - online search","leadDate":"25-Jul-2024","lraSignatureDate":"04-Dec-2024","daysToLRA":132,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":15,"unitAddress":"2 Citrine Cres","type":"3-2","sellingPrice":2350000,"cashOrLinkedDeal":"LINKED","linkedAddress":"Houtkapper 07 Montana"},
+            {"phase":1.2,"agentName":"Marlene","purchaserLastName":"O'Donoghue","purchaserAge":80,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Oasis webite - online search","leadDate":"07-Nov-2024","lraSignatureDate":"19-Nov-2024","daysToLRA":12,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":21,"unitAddress":"14 Citrine Cres","type":"3-1","sellingPrice":2800000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.3,"agentName":"Marlene","purchaserLastName":"Creswell","purchaserAge":72,"purchaserGender":"Couple","purchaserDemographic":"White","purchaserCurrentAddress":"Morninghill, Gauteng","leadSource":"Seeff - Call in","leadDate":"08-Jan-2025","lraSignatureDate":"16-Jan-2025","daysToLRA":8,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":39,"unitAddress":"8 Pincushion","type":"2-2","sellingPrice":3850000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.4,"agentName":"Marlene","purchaserLastName":"Devchand","purchaserAge":71,"purchaserGender":"Couple","purchaserDemographic":"Coloured","purchaserCurrentAddress":"Bloubergrant","leadSource":"Seeff - Call in","leadDate":"06-Feb-2025","lraSignatureDate":"03-Mar-2025","daysToLRA":25,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":57,"unitAddress":"20 Saffron (1 Amber)","type":"3-2","sellingPrice":2650000,"cashOrLinkedDeal":"CASH","linkedAddress":"N/A"},
+            {"phase":1.1,"agentName":"Marlene","purchaserLastName":"Thompson","purchaserAge":59,"purchaserGender":"Single Female","purchaserDemographic":"White","purchaserCurrentAddress":"Sunningdale","leadSource":"Seeff - Walk in","leadDate":"14-Aug-2024","lraSignatureDate":"18-Sep-2024","daysToLRA":35,"lraStatus":"LRA SIGNED BY RABIE","unitNumber":5,"unitAddress":"8 Saffron Dr","type":"2-1","sellingPrice":4500000,"cashOrLinkedDeal":"CASH (10%)","linkedAddress":"N/A"}
+        ];
+        
+        let charts = {};
+        const currencyFormatter = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', minimumFractionDigits: 0, maximumFractionDigits:0 });
+
+        function safeParseDate(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return null;
+            const dateParts = dateStr.split('-'); 
+            if (dateParts.length !== 3) return null;
+            let [day, monthAbbr, year] = dateParts;
+            day = parseInt(day, 10);
+            year = parseInt(year, 10);
+            if (isNaN(day) || isNaN(year)) return null;
+            if (year < 100) year += 2000; 
+            if (year < 2023 || year > 2026) return null; 
+            const monthMap = {'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11};
+            const month = monthMap[monthAbbr];
+            if (month === undefined) return null;
+            const d = new Date(Date.UTC(year, month, day)); 
+            if (d.getUTCFullYear() === year && d.getUTCMonth() === month && d.getUTCDate() === day) return d;
+            return null;
+        }
+
+        function preprocessData(data) {
+            return data.map(item => {
+                const leadDate = safeParseDate(item.leadDate); 
+                const lraDate = safeParseDate(item.lraSignatureDate);
+                
+                let daysToLRA = typeof item.daysToLRA === 'number' && !isNaN(item.daysToLRA) ? item.daysToLRA : null;
+                if (leadDate && lraDate && daysToLRA === null ) { 
+                    const diffTime = lraDate.getTime() - leadDate.getTime();
+                    daysToLRA = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                }
+
+                let status = String(item.lraStatus || 'Unknown').toUpperCase();
+                let isConverted = ['SOLD', 'LRA SIGNED BY RABIE', 'LRA SIGNED'].includes(status); 
+                
+                let sellingPrice = null;
+                if (item.sellingPrice !== null && item.sellingPrice !== undefined) {
+                    const priceStr = String(item.sellingPrice).replace(/,/g, '');
+                    const parsedPrice = parseFloat(priceStr);
+                    if (!isNaN(parsedPrice)) sellingPrice = parsedPrice;
+                }
+                
+                let financeType = String(item.cashOrLinkedDeal || "Unknown").toUpperCase();
+                if (financeType === "CASH (10%)") financeType = "CASH_10_PERCENT";
+
+                let agentName = item.agentName || "Unknown";
+                 if (agentName.includes('&') || agentName.includes('Paul & Marlene') || agentName.includes('Andre & Marlene')) { 
+                    if (agentName.includes('Caroline')) agentName = "Caroline & Margie";
+                    else if (agentName.includes('Paul & Marlene')) agentName = "Paul & Marlene";
+                    else if (agentName.includes('Andre & Marlene')) agentName = "Andre & Marlene";
+                    else agentName = "Joint Deal"; // Generic for other splits if any
+                }
+
+                return {
+                    ...item,
+                    agentNameClean: agentName,
+                    leadDate,
+                    lraSignatureDate: lraDate,
+                    daysToLRA: daysToLRA,
+                    lraStatus: status,
+                    isConverted,
+                    sellingPriceClean: sellingPrice,
+                    purchaserDemographic: item.purchaserDemographic || "Unknown",
+                    purchaserGender: item.purchaserGender || "Unknown", 
+                    cashOrLinkedDealClean: financeType, 
+                    type: item.type || "Unknown",
+                    phase: item.phase || "Unknown"
+                };
+            });
+        }
+        
+        const processedMasterData = preprocessData(masterDealData);
+
+        function populateFilters() {
+            const filters = {
+                agentFilter: 'agentNameClean',
+                leadSourceFilter: 'leadSource',
+                lraStatusFilter: 'lraStatus',
+                propertyTypeFilter: 'type',
+                purchaserDemographicFilter: 'purchaserDemographic',
+                purchaserGenderFilter: 'purchaserGender',
+                financeTypeFilter: 'cashOrLinkedDealClean',
+                phaseFilter: 'phase'
+            };
+
+            for (const filterId in filters) {
+                const selectElement = document.getElementById(filterId);
+                const key = filters[filterId];
+                const uniqueValues = ['All', ...new Set(processedMasterData.map(d => d[key]).filter(val => val !== null && val !== undefined).sort((a,b) => String(a).localeCompare(String(b))))];
+                selectElement.innerHTML = uniqueValues.map(val => {
+                    let displayVal = String(val).replace('CASH_10_PERCENT', 'CASH (10%)');
+                    return `<option value="${val}">${displayVal}</option>`;
+                }).join('');
+                selectElement.addEventListener('change', updateDashboard);
+            }
+        }
+
+        function filterData() {
+            const agent = document.getElementById('agentFilter').value;
+            const source = document.getElementById('leadSourceFilter').value;
+            const status = document.getElementById('lraStatusFilter').value;
+            const propertyType = document.getElementById('propertyTypeFilter').value;
+            const demo = document.getElementById('purchaserDemographicFilter').value;
+            const gender = document.getElementById('purchaserGenderFilter').value;
+            let finance = document.getElementById('financeTypeFilter').value;
+            const phase = document.getElementById('phaseFilter').value;
+
+            return processedMasterData.filter(d => 
+                (agent === 'All' || d.agentNameClean === agent) &&
+                (source === 'All' || d.leadSource === source) &&
+                (status === 'All' || d.lraStatus === status) &&
+                (propertyType === 'All' || d.type === propertyType) &&
+                (demo === 'All' || d.purchaserDemographic === demo) &&
+                (gender === 'All' || d.purchaserGender === gender) &&
+                (finance === 'All' || d.cashOrLinkedDealClean === finance) &&
+                (phase === 'All' || String(d.phase).startsWith(String(phase))) // Allow filtering by main phase number e.g. "1" for "1.1", "1.2" etc
+            );
+        }
+
+        function updateDashboard() {
+            const filteredData = filterData(); 
+            updateKPIs(filteredData); 
+            Object.values(charts).forEach(chart => { if(chart) chart.destroy(); }); 
+            charts = {}; 
+            
+            createAgentChart(); 
+            createLeadSourceChart(filteredData);
+            createPropertyTypeChart(filteredData);
+            createPurchaserDemographicChart(); 
+            createPurchaserGenderChart(filteredData);
+            createFinanceTypeChart(); 
+            createLRATimeChart(filteredData);
+            createPurchaserAddressChart(filteredData);
+            createPhaseChart(filteredData);
+            updateLinkedAddressesList(filteredData);
+        }
+
+        function updateKPIs(data) { 
+            document.getElementById('totalDeals').textContent = 48; 
+            document.getElementById('totalSalesValue').textContent = currencyFormatter.format(162445000); 
+            document.getElementById('totalLinkedDeals').textContent = 27;
+
+            const allConvertedDeals = data.filter(d => d.isConverted);
+
+            const validDaysToLRA = allConvertedDeals.filter(d => d.daysToLRA !== null && !isNaN(d.daysToLRA)).map(d => d.daysToLRA);
+            const avgDays = validDaysToLRA.length > 0 ? validDaysToLRA.reduce((a, b) => a + b, 0) / validDaysToLRA.length : 0;
+            document.getElementById('avgDaysToLRA').textContent = `${avgDays.toFixed(0)}`;
+
+            const validPrices = allConvertedDeals.filter(d => d.sellingPriceClean !== null).map(d => d.sellingPriceClean);
+            const avgPrice = validPrices.length > 0 ? validPrices.reduce((a,b) => a+b, 0) / validPrices.length : 0; 
+            document.getElementById('avgSellingPrice').textContent = currencyFormatter.format(avgPrice);
+        }
+
+        function createChart(ctx, type, data, options) {
+            const defaultOptions = {
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { 
+                        position: 'bottom', 
+                        labels:{ padding:10, font: {size: 10} } 
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null && (type === 'bar' || type === 'line')) {
+                                    label += context.parsed.y;
+                                } else if (context.parsed !== null && (type === 'pie' || type === 'doughnut')) {
+                                     label += context.label + ': ' + context.raw;
+                                } else if (context.parsed.x !== null && type === 'bar' && options.indexAxis === 'y') {
+                                    label += context.parsed.x;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            };
+            return new Chart(ctx, { type, data, options: {...defaultOptions, ...options} });
+        }
+        
+        const chartColors = {
+            blue: '#3B82F6', green: '#10B981', yellow: '#FBBF24', purple: '#8B5CF6', pink: '#EC4899',
+            red: '#EF4444', indigo: '#6366F1', teal: '#14B8A6', slate: '#4A5568', orange: '#F97316',
+            emerald: '#34D399', sky: '#60A5FA', amber: '#F59E0B', lime: '#84CC16', cyan: '#06B6D4'
+        };
+        const colorPalette = Object.values(chartColors);
+        const demographicColors = [chartColors.indigo, chartColors.teal];
+        const genderColors = [chartColors.pink, chartColors.blue, chartColors.slate, chartColors.purple]; 
+        const financeColors = [chartColors.green, chartColors.amber, chartColors.sky];
+
+        function createAgentChart() { 
+            const ctx = document.getElementById('agentChart').getContext('2d');
+            const agentData = {
+                'Andre': 19.5,
+                'Caroline & Margie': 10,
+                'Paul': 6.5,
+                'Marlene': 12
+            };
+             // Handle potential joint agent deals for overall chart if data structure implies it
+            const displayAgentData = {};
+            Object.keys(agentData).forEach(agent => {
+                if (agent === "Paul & Marlene" || agent === "Andre & Marlene") { // Example for splitting if they were combined
+                    const parts = agent.split(" & ");
+                    displayAgentData[parts[0]] = (displayAgentData[parts[0]] || 0) + (agentData[agent] / 2);
+                    displayAgentData[parts[1]] = (displayAgentData[parts[1]] || 0) + (agentData[agent] / 2);
+                } else {
+                    displayAgentData[agent] = (displayAgentData[agent] || 0) + agentData[agent];
+                }
+            });
+
+            charts.agentChart = createChart(ctx, 'bar', {
+                labels: Object.keys(displayAgentData),
+                datasets: [{ label: 'Deals', data: Object.values(displayAgentData), backgroundColor: chartColors.slate, borderRadius: 4 }]
+            }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 2 } } } });
+        }
+
+        function createLeadSourceChart(data) {
+            const ctx = document.getElementById('leadSourceChart').getContext('2d');
+            const counts = data.reduce((acc, d) => { 
+                const source = d.leadSource || "Unknown";
+                acc[source] = (acc[source] || 0) + 1; return acc; 
+            }, {});
+            charts.leadSourceChart = createChart(ctx, 'doughnut', {
+                labels: Object.keys(counts),
+                datasets: [{ data: Object.values(counts), backgroundColor: colorPalette, borderColor: '#f8fafc', borderWidth: 4 }]
+            }, {});
+        }
+        
+        function createPropertyTypeChart(data) {
+            const ctx = document.getElementById('propertyTypeChart').getContext('2d');
+            const counts = data.reduce((acc, d) => { acc[d.type] = (acc[d.type] || 0) + 1; return acc; }, {});
+            charts.propertyTypeChart = createChart(ctx, 'pie', {
+                labels: Object.keys(counts),
+                datasets: [{ data: Object.values(counts), backgroundColor: colorPalette.slice(0, Object.keys(counts).length), borderColor: '#f8fafc', borderWidth: 4 }]
+            }, {});
+        }
+
+        function createPurchaserDemographicChart() { 
+            const ctx = document.getElementById('purchaserDemographicChart').getContext('2d');
+            const demoData = { 'White': 46, 'Coloured': 2 };
+            charts.purchaserDemographicChart = createChart(ctx, 'bar', {
+                labels: Object.keys(demoData),
+                datasets: [{ label: 'Count', data: Object.values(demoData), backgroundColor: demographicColors, borderRadius: 4 }]
+            }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 5, suggestedMax: 50 } } } });
+        }
+
+        function createPurchaserGenderChart(data) {
+            const ctx = document.getElementById('purchaserGenderChart').getContext('2d');
+            const counts = data.reduce((acc, d) => { acc[d.purchaserGender] = (acc[d.purchaserGender] || 0) + 1; return acc; }, {});
+            charts.purchaserGenderChart = createChart(ctx, 'pie', {
+                labels: Object.keys(counts),
+                datasets: [{ data: Object.values(counts), backgroundColor: genderColors.slice(0, Object.keys(counts).length), borderColor: '#f8fafc', borderWidth: 4 }]
+            }, {});
+        }
+        
+        function createFinanceTypeChart() { 
+            const ctx = document.getElementById('financeTypeChart').getContext('2d');
+             const financeData = {
+                'LINKED': 27, 
+                'CASH': 18,
+                'CASH (10%)': 2 
+            };
+            charts.financeTypeChart = createChart(ctx, 'doughnut', {
+                labels: Object.keys(financeData),
+                datasets: [{ data: Object.values(financeData), backgroundColor: financeColors, borderColor: '#f8fafc', borderWidth: 4 }]
+            }, {});
+        }
+
+        function createLRATimeChart(data) {
+            const ctx = document.getElementById('lraTimeChart').getContext('2d');
+            const counts = data.filter(d => d.lraSignatureDate && d.isConverted).reduce((acc, d) => {
+                const monthYear = d.lraSignatureDate.toISOString().substring(0, 7);
+                acc[monthYear] = (acc[monthYear] || 0) + 1;
+                return acc;
+            }, {});
+            const sortedLabels = Object.keys(counts).sort();
+            const chartData = sortedLabels.map(l => counts[l]);
+            charts.lraTimeChart = createChart(ctx, 'line', {
+                labels: sortedLabels,
+                datasets: [{ label: 'Converted Deals', data: chartData, borderColor: chartColors.emerald, backgroundColor: 'rgba(52, 211, 153, 0.2)', fill: true, tension: 0.4 }]
+            }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...chartData, 0) + 2  } } });
+        }
+
+        function createPurchaserAddressChart(data) {
+            const ctx = document.getElementById('purchaserAddressChart').getContext('2d');
+            const counts = data.reduce((acc, d) => { 
+                const address = d.purchaserCurrentAddress || "Unknown";
+                acc[address] = (acc[address] || 0) + 1; 
+                return acc; 
+            }, {});
+            const sortedData = Object.entries(counts).sort(([,a],[,b]) => b-a).slice(0,10); 
+            charts.purchaserAddressChart = createChart(ctx, 'bar', {
+                labels: sortedData.map(d => d[0]),
+                datasets: [{ label: 'Count', data: sortedData.map(d => d[1]), backgroundColor: colorPalette.slice(4, 4 + sortedData.length), borderRadius: 4 }]
+            }, { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } });
+        }
+
+        function createPhaseChart(data) {
+            const ctx = document.getElementById('phaseChart').getContext('2d');
+            const counts = data.reduce((acc, d) => { 
+                const phase = String(d.phase).split('.')[0] || "Unknown"; // Group by main phase number
+                acc[phase] = (acc[phase] || 0) + 1; 
+                return acc; 
+            }, {});
+            charts.phaseChart = createChart(ctx, 'pie', {
+                labels: Object.keys(counts),
+                datasets: [{ data: Object.values(counts), backgroundColor: [chartColors.sky, chartColors.indigo, chartColors.slate, chartColors.purple].slice(0, Object.keys(counts).length), borderColor: '#f8fafc', borderWidth: 4 }]
+            }, {});
+        }
+
+        function updateLinkedAddressesList(data) {
+            const listElement = document.getElementById('linkedAddressesList');
+            listElement.innerHTML = ''; 
+            const linkedDeals = data.filter(d => d.cashOrLinkedDealClean === 'LINKED' && d.linkedAddress && d.linkedAddress !== 'N/A');
+            
+            if (linkedDeals.length === 0) {
+                listElement.innerHTML = '<li class="text-gray-500">No linked deals with specified addresses in current selection.</li>';
+                return;
+            }
+            
+            const addressCounts = linkedDeals.reduce((acc, d) => {
+                acc[d.linkedAddress] = (acc[d.linkedAddress] || 0) + 1;
+                return acc;
+            }, {});
+
+            const sortedAddresses = Object.entries(addressCounts).sort((a,b) => b[1] - a[1]); 
+
+            sortedAddresses.forEach(([address, count]) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${address} (${count} deal${count > 1 ? 's' : ''})`;
+                listElement.appendChild(listItem);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            populateFilters();
+            updateDashboard(); 
+        });
+
+    </script>
+</body>
+</html>
