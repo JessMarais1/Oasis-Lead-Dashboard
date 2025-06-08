@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Custom Font (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a more integrated look with the dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* slate-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 350px; /* Default height, can be overridden */
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 sm:p-6 md:p-8 text-slate-100">
+
+    <header class="mb-10 text-center">
+        <h1 class="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
+            Company Leads Dashboard
+        </h1>
+    </header>
+
+    <!-- Summary Card for Total Leads -->
+    <div class="mb-10">
+        <div class="bg-slate-800/60 backdrop-blur-lg shadow-2xl rounded-xl p-6 sm:p-8 flex items-center justify-center space-x-4 sm:space-x-6 max-w-md mx-auto ring-1 ring-slate-700/50 hover:shadow-sky-500/30 transition-shadow duration-300">
+            <!-- TrendingUp Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-12 w-12 sm:h-16 sm:w-16 text-sky-400 lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            <div>
+                <p class="text-slate-400 text-lg sm:text-xl">Total Leads</p>
+                <p class="text-4xl sm:text-5xl font-bold text-white" id="total-leads-value">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <!-- Leads by Source -->
+        <div class="bg-slate-800/60 backdrop-blur-lg shadow-xl rounded-xl p-6 ring-1 ring-slate-700/50">
+            <h2 class="text-2xl font-semibold mb-1 text-sky-300 flex items-center">
+                <!-- Briefcase Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 h-7 w-7 lucide lucide-briefcase"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                Leads by Source
+            </h2>
+            <p class="text-sm text-slate-400 mb-6">Distribution of leads based on their origin.</p>
+            <div class="chart-container" style="height: 450px;"> {/* Increased height for more source labels */}
+                <canvas id="leadsBySourceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Leads by Status -->
+        <div class="bg-slate-800/60 backdrop-blur-lg shadow-xl rounded-xl p-6 ring-1 ring-slate-700/50">
+            <h2 class="text-2xl font-semibold mb-1 text-sky-300 flex items-center">
+                <!-- Target Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 h-7 w-7 lucide lucide-target"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                Leads by Status
+            </h2>
+            <p class="text-sm text-slate-400 mb-2">Current status breakdown of all leads.</p>
+            <div class="chart-container" style="height: 380px;">
+                <canvas id="leadsByStatusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Leads by Allocated Person -->
+        <div class="bg-slate-800/60 backdrop-blur-lg shadow-xl rounded-xl p-6 lg:col-span-2 ring-1 ring-slate-700/50">
+            <h2 class="text-2xl font-semibold mb-1 text-sky-300 flex items-center">
+                <!-- UserCheck Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 h-7 w-7 lucide lucide-user-check"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                Leads by Allocated Person
+            </h2>
+            <p class="text-sm text-slate-400 mb-6">Number of leads assigned to each consultant/agent.</p>
+            <div class="chart-container" style="height: 380px;">
+                <canvas id="leadsByPersonChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Meeting Breakdown Section -->
+    <div class="mt-10 pt-8 border-t border-slate-700">
+        <h2 class="text-3xl font-bold text-center mb-8 text-sky-300">Weekly Meeting Breakdown</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            <!-- Meetings Week 22 -->
+            <div class="bg-slate-800/60 backdrop-blur-lg shadow-xl rounded-xl p-6 ring-1 ring-slate-700/50">
+                <h3 class="text-2xl font-semibold mb-1 text-sky-300 flex items-center">
+                    <!-- CalendarDays Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 h-7 w-7 lucide lucide-calendar-days"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+                    Meetings - Week 22 (Approx. May 26 - Jun 1)
+                </h3>
+                <p class="text-sm text-slate-400 mb-6">Approximate client meetings per agent per day, parsed from calendar image.</p>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="meetingsWeek22Chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Meetings Week 23 -->
+            <div class="bg-slate-800/60 backdrop-blur-lg shadow-xl rounded-xl p-6 ring-1 ring-slate-700/50">
+                <h3 class="text-2xl font-semibold mb-1 text-sky-300 flex items-center">
+                     <!-- CalendarDays Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 h-7 w-7 lucide lucide-calendar-days"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+                    Meetings - Week 23 (Approx. Jun 2 - Jun 8)
+                </h3>
+                <p class="text-sm text-slate-400 mb-6">Approximate client meetings per agent per day, parsed from calendar image.</p>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="meetingsWeek23Chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+      
+    <footer class="mt-12 pt-8 border-t border-slate-700 text-center text-slate-500 text-sm">
+        <p>Dashboard generated on <span id="generation-date"></span>.</p>
+        <p class="mt-1">Lead source, person allocation, and weekly meeting data are illustrative or approximated from provided images/data. For precise figures, advanced parsing or manual aggregation would be required.</p>
+    </footer>
+
+<script>
+    // --- Dashboard Data ---
+    const dashboardData = {
+      total_leads: 2821, // As per previous user instruction
+      leads_by_source: [ // Updated as per the image "leads 1.png"
+        { name: 'OASIS', value: 1489 },
+        { name: 'Meta Ads', value: 617 },
+        { name: 'Call In BB', value: 198 },
+        { name: 'LAUNCH', value: 151 }, // Note: 'LAUNCH' has a trailing space in some datasets, ensure consistency if needed. Here, no space.
+        { name: 'EXPO', value: 106 }, // Distinct from 'Expo' based on image
+        { name: 'Expo', value: 80 },   // Distinct from 'EXPO'
+        { name: 'P24/portal BB', value: 79 },
+        { name: 'Walk In BB', value: 31 },
+        { name: 'External Referral', value: 20 },
+        { name: 'Show Invite', value: 19 },
+        { name: 'Social Media BB', value: 13 },
+        { name: 'Atlantic Beach Info', value: 11 },
+        { name: 'Show House Walk-in', value: 6 },
+        { name: 'White House', value: 2 }
+        // Sum of these sources is 1489+617+198+151+106+80+79+31+20+19+13+11+6+2 = 2822
+        // This is 1 more than the stated total_leads. This minor discrepancy is noted.
+      ],
+      leads_by_status: [
+        { name: 'In Progress', value: 1788, color: '#3B82F6' }, 
+        { name: 'Junk Leads', value: 740, color: '#EF4444' },      
+        { name: 'Presented', value: 153, color: '#10B981' },   
+        { name: 'Not Responded', value: 91, color: '#F97316' }, 
+        { name: 'Sold', value: 48, color: '#F59E0B' }       
+      ],
+      leads_by_person: [ // Illustrative, sums to 2821
+        { name: 'Andre', value: 750 },
+        { name: 'Marlene', value: 680 },
+        { name: 'Paul', value: 700 },
+        { name: 'Caroline & Margie', value: 691 }
+      ],
+      meetings_week22: {
+        days: ['Mon 26', 'Tue 27', 'Wed 28', 'Thu 29', 'Fri 30', 'Sat 31', 'Sun 1'],
+        agents: [
+            { name: 'Andre', data: [1, 1, 1, 0, 1, 3, 0], color: '#0EA5E9' }, 
+            { name: 'Paul', data: [0, 1, 0, 1, 0, 0, 0], color: '#10B981' },  
+            { name: 'Marlene', data: [0, 0, 1, 0, 0, 1, 0], color: '#F59E0B' },
+            { name: 'Caroline & Margie', data: [0, 0, 0, 1, 1, 0, 0], color: '#EC4899' } 
+        ]
+      },
+      meetings_week23: {
+        days: ['Mon 2', 'Tue 3', 'Wed 4', 'Thu 5', 'Fri 6', 'Sat 7', 'Sun 8'],
+        agents: [
+            { name: 'Andre', data: [4, 2, 0, 3, 1, 0, 0], color: '#0EA5E9' },
+            { name: 'Paul', data: [0, 0, 0, 0, 0, 0, 1], color: '#10B981' },
+            { name: 'Marlene', data: [0, 0, 2, 1, 0, 1, 0], color: '#F59E0B' },
+            { name: 'Caroline & Margie', data: [1, 1, 0, 0, 0, 0, 0], color: '#EC4899' }
+        ]
+      },
+      error: null
+    };
+
+    // --- Color Palettes (for Chart.js) ---
+    // Ensure enough distinct colors if you have more sources than this array.
+    const COLORS_SOURCE_BAR = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82Ca9D', '#FF5733', '#C70039', '#A020F0', '#FF1493', '#00CED1', '#FFD700', '#32CD32', '#B22222'];
+    const COLORS_PERSON_BAR = ['#22d3ee', '#82Ca9D', '#a4de6c', '#d0ed57', '#ff8c00', '#da70d6'];
+
+    // --- Chart Rendering Logic ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Update total leads display
+        document.getElementById('total-leads-value').textContent = dashboardData.total_leads.toLocaleString();
+        document.getElementById('generation-date').textContent = new Date().toLocaleDateString();
+
+        // Chart.js Global Defaults
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#94a3b8'; 
+        Chart.defaults.borderColor = '#475569'; 
+
+        // 1. Leads by Source Chart (Vertical Bar)
+        const sourceCtx = document.getElementById('leadsBySourceChart').getContext('2d');
+        new Chart(sourceCtx, {
+            type: 'bar',
+            data: {
+                labels: dashboardData.leads_by_source.map(item => item.name),
+                datasets: [{
+                    label: 'Number of Leads',
+                    data: dashboardData.leads_by_source.map(item => item.value),
+                    backgroundColor: COLORS_SOURCE_BAR,
+                    borderColor: COLORS_SOURCE_BAR.map(color => color.replace(')', ', 0.7)').replace('rgb', 'rgba')),
+                    borderWidth: 1,
+                    borderRadius: {topLeft: 4, topRight: 4}
+                }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: false } } // Added autoSkip: false
+                },
+                plugins: { 
+                    legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 } } }, 
+                    tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 4, boxPadding: 3 } 
+                }
+            }
+        });
+
+        // 2. Leads by Status Chart (Pie)
+        const statusCtx = document.getElementById('leadsByStatusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'pie',
+            data: {
+                labels: dashboardData.leads_by_status.map(item => item.name),
+                datasets: [{
+                    label: 'Leads by Status',
+                    data: dashboardData.leads_by_status.map(item => item.value),
+                    backgroundColor: dashboardData.leads_by_status.map(item => item.color),
+                    borderColor: '#1e293b', borderWidth: 2, hoverOffset: 8
+                }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                plugins: { 
+                    legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth: 15, padding: 15 }, align: 'center' }, 
+                    tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 4, callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed.toLocaleString(); } const total = context.dataset.data.reduce((acc, val) => acc + val, 0); const percentage = ((context.raw / total) * 100).toFixed(1) + '%'; return `${label} (${percentage})`; } } } 
+                },
+                animation: { animateScale: true, animateRotate: true }
+            }
+        });
+
+        // 3. Leads by Allocated Person Chart (Horizontal Bar)
+        const personCtx = document.getElementById('leadsByPersonChart').getContext('2d');
+        new Chart(personCtx, {
+            type: 'bar',
+            data: {
+                labels: dashboardData.leads_by_person.map(item => item.name),
+                datasets: [{
+                    label: 'Number of Leads',
+                    data: dashboardData.leads_by_person.map(item => item.value),
+                    backgroundColor: COLORS_PERSON_BAR,
+                    borderColor: COLORS_PERSON_BAR.map(color => color.replace(')', ', 0.7)').replace('rgb', 'rgba')),
+                    borderWidth: 1,
+                    borderRadius: {topRight: 4, bottomRight: 4}
+                }]
+            },
+            options: { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                scales: { x: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, y: { grid: { display: false }, ticks: { color: '#94a3b8', font: {size: 11} } } },
+                plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 } } }, tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 4, boxPadding: 3 } }
+            }
+        });
+
+        // 4. Meetings Week 22 Chart (Grouped Vertical Bar)
+        const meetingsW22Ctx = document.getElementById('meetingsWeek22Chart').getContext('2d');
+        new Chart(meetingsW22Ctx, {
+            type: 'bar',
+            data: {
+                labels: dashboardData.meetings_week22.days,
+                datasets: dashboardData.meetings_week22.agents.map(agent => ({
+                    label: agent.name,
+                    data: agent.data,
+                    backgroundColor: agent.color,
+                    borderColor: agent.color.replace(')', ', 0.7)').replace('rgb', 'rgba'),
+                    borderWidth: 1,
+                    borderRadius: {topLeft: 3, topRight: 3}
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
+                plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth:12, padding:10 } }, tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 4, boxPadding: 3 } }
+            }
+        });
+        
+        // 5. Meetings Week 23 Chart (Grouped Vertical Bar)
+        const meetingsW23Ctx = document.getElementById('meetingsWeek23Chart').getContext('2d');
+        new Chart(meetingsW23Ctx, {
+            type: 'bar',
+            data: {
+                labels: dashboardData.meetings_week23.days,
+                datasets: dashboardData.meetings_week23.agents.map(agent => ({
+                    label: agent.name,
+                    data: agent.data,
+                    backgroundColor: agent.color,
+                    borderColor: agent.color.replace(')', ', 0.7)').replace('rgb', 'rgba'),
+                    borderWidth: 1,
+                    borderRadius: {topLeft: 3, topRight: 3}
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } } },
+                plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 }, boxWidth:12, padding:10 } }, tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 4, boxPadding: 3 } }
+            }
+        });
+
+    });
+</script>
+
+</body>
+</html>
